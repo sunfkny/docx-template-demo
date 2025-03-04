@@ -11,4 +11,7 @@ export default antfu({
   ignores: [
     'src/routeTree.gen.ts',
   ],
+  rules: {
+    'no-console': 'off',
+  },
 });

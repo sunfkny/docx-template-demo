@@ -1,11 +1,10 @@
 import { Button } from '@/components/ui/button';
 import { createFileRoute } from '@tanstack/react-router';
-import { renderAsync } from 'docx-preview';
 import Docxtemplater from 'docxtemplater';
 import { saveAs } from 'file-saver';
 import PizZip from 'pizzip';
 import PizZipUtils from 'pizzip/utils/index.js';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import toast from 'react-hot-toast';
 
 function loadFile(url: string, callback: (err: Error, data: string) => void) {
@@ -30,7 +29,7 @@ export const Route = createFileRoute('/docxtemplater')({
 
 function RouteComponent() {
   const [file, setFile] = useState(null as Blob | null);
-  const container = useRef(null as HTMLDivElement | null);
+  const [url, setUrl] = useState(undefined as string | undefined);
 
   async function generateDocument() {
     const content = await loadFileAsync('/tag-example.docx');
@@ -55,9 +54,25 @@ function RouteComponent() {
       type: 'blob',
       mimeType:
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    }); // Output the document using Data-URI
+    });
     setFile(out);
-    await renderAsync(out, container.current!);
+    const form = new FormData();
+    form.append('file', out, 'output.docx');
+    const res = await fetch('https://tmpfiles.org/api/v1/upload', {
+      method: 'POST',
+      body: form,
+    });
+    try {
+      const result = await res.json();
+      console.log(result);
+      const src = result.data.url.replace('https://tmpfiles.org/', 'https://tmpfiles.org/dl/');
+      setUrl(
+        `https://view.officeapps.live.com/op/embed.aspx?${new URLSearchParams({ src }).toString()}`,
+      );
+    }
+    catch (error) {
+      console.error(error);
+    }
   }
   function downloadDocument() {
     if (!file) {
@@ -67,14 +82,16 @@ function RouteComponent() {
     saveAs(file, 'output.docx');
   }
 
-  useEffect(() => {
-    generateDocument();
-  }, []);
-
   return (
     <>
-      <div ref={container}></div>
-      <Button onClick={downloadDocument} className="fixed right-4 bottom-4">Download</Button>
+      {/* eslint-disable-next-line react-dom/no-missing-iframe-sandbox */}
+      <iframe src={url} className="w-screen h-screen"></iframe>
+      <div className="fixed right-4 bottom-4">
+        <div className="flex gap-4">
+          <Button onClick={generateDocument}>Generate</Button>
+          <Button onClick={downloadDocument}>Download</Button>
+        </div>
+      </div>
     </>
   );
 }
