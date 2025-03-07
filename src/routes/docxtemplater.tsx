@@ -4,6 +4,7 @@ import Docxtemplater from 'docxtemplater';
 import { saveAs } from 'file-saver';
 import PizZip from 'pizzip';
 import PizZipUtils from 'pizzip/utils/index.js';
+import printJS from 'print-js';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 
@@ -57,22 +58,15 @@ function RouteComponent() {
     });
     setFile(out);
     const form = new FormData();
-    form.append('file', out, 'output.docx');
-    const res = await fetch('https://tmpfiles.org/api/v1/upload', {
+    form.append('fileInput', out, 'output.docx');
+    // stirlingpdf api
+    const res = await fetch('/api/v1/convert/file/pdf', {
       method: 'POST',
       body: form,
     });
-    try {
-      const result = await res.json();
-      console.log(result);
-      const src = result.data.url.replace('https://tmpfiles.org/', 'https://tmpfiles.org/dl/');
-      setUrl(
-        `https://view.officeapps.live.com/op/embed.aspx?${new URLSearchParams({ src }).toString()}`,
-      );
-    }
-    catch (error) {
-      console.error(error);
-    }
+    const pdf = await res.blob();
+    const pdfUrl = URL.createObjectURL(pdf);
+    setUrl(pdfUrl);
   }
   function downloadDocument() {
     if (!file) {
@@ -80,6 +74,13 @@ function RouteComponent() {
       return;
     }
     saveAs(file, 'output.docx');
+  }
+  function printDocument() {
+    if (!file) {
+      toast.error('No file to print');
+      return;
+    }
+    printJS({ printable: url, type: 'pdf' });
   }
 
   return (
@@ -90,6 +91,7 @@ function RouteComponent() {
         <div className="flex gap-4">
           <Button onClick={generateDocument}>Generate</Button>
           <Button onClick={downloadDocument}>Download</Button>
+          <Button onClick={printDocument}>Print</Button>
         </div>
       </div>
     </>
